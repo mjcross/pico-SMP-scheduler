@@ -11,43 +11,56 @@
 const int task_delay = 500;
 const int task_size = 128;
 
-SemaphoreHandle_t toggle_sem;
+// create a semphore on the heap
+SemaphoreHandle_t mutex;
 
-void vTaskSMP_demo_delay(void *pvParameters){
-
-    while(true) {
-        xSemaphoreGive(toggle_sem);
-        vTaskDelay(task_delay);
-    }
-
+// send a string to stdout, using the semaphore to ensure
+// that only one string prints at once
+void vGuardedPrint(char *out){
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    puts(out);
+    xSemaphoreGive(mutex);
 }
 
-void vTaskSMP_demo_led(void *pvParameters){
+// the (same) function executed by each task
+// it continuously reports which core the caller is running
+// on and then delays for a bit
+void vTaskSMP_print_core(void *pvParameters){
+    // calling pcTaskGetName(NULL) returns the name of the calling process
+    char *task_name = pcTaskGetName(NULL);
+    char buf[12];
 
     while(true) {
-        if(xSemaphoreTake(toggle_sem, portMAX_DELAY)){
-            gpio_put(25, !gpio_get_out_level(25));
-        }
+        // compose our output line in the buffer and then take the MUTEX
+        // to print it out without interference from the other tasks
+        sprintf(buf, "%s %d", task_name, get_core_num());
+        vGuardedPrint(buf);
+
+        // wait for a while
+        vTaskDelay(task_delay);
     }
 }
 
 void main(){
     stdio_init_all();
 
-    gpio_init(25);
-    gpio_set_dir(25,1);
+    mutex = xSemaphoreCreateMutex(); // Create the mutex
 
-    toggle_sem = xSemaphoreCreateBinary();
+    // Define the task handles
+    TaskHandle_t handleA;
+    TaskHandle_t handleB;
 
-    // create tasks
-    TaskHandle_t delay_task_handle, led_task_handle;
-    xTaskCreate(vTaskSMP_demo_delay, "A", task_size, NULL, 1, &delay_task_handle);
-    xTaskCreate(vTaskSMP_demo_led, "B", task_size, NULL, 1, &led_task_handle);
+    // Create four tasks with different names, two with handles
+    // all execute our `vTaskSMP_print_core()` function 
+    xTaskCreate(vTaskSMP_print_core, "A", task_size, NULL, 1, &handleA);
+    xTaskCreate(vTaskSMP_print_core, "B", task_size, NULL, 1, &handleB);
+    xTaskCreate(vTaskSMP_print_core, "C", task_size, NULL, 1, NULL);
+    xTaskCreate(vTaskSMP_print_core, "D", task_size, NULL, 1, NULL);
 
-    // pin each task to a different core
-    vTaskCoreAffinitySet(delay_task_handle, 0b01);    // pin 'delay' task to core 0
-    vTaskCoreAffinitySet(led_task_handle, 0b10);      // pin 'led' task to core 1
+    // Pin Tasks 'A' and 'B' only
+    vTaskCoreAffinitySet(handleA, 0b01); // Core 0
+    vTaskCoreAffinitySet(handleB, 0b10); // Core 1
 
-    // start tasks running
+    // Start the scheduler
     vTaskStartScheduler();
 }

@@ -1,26 +1,14 @@
-# rp2040-freertos-template
-This is a template project for developing FreeRTOS based applications on the Raspberry Pi RP2040.
+# pico-SMP-scheduler
+A simple example copied from https://learnembeddedsystems.co.uk/freertos-smp-tutorial
 
-The example is a simple LED blinky using two tasks synchronised by a one-bit semaphore.
+The application creates four simple tasks constantly report which core they are running on.
 
-It uses both cores by setting `configNUMBER_OF_CORES 2` in *FreeRTOSConfig.h*. In the example each task is pinned to a different core.
+Tasks 'A' and 'B' are pinned to specific cores; tasks 'C' and 'D' are assigned freely by the scheduler.
+
+A mutex semaphore is used to ensure that only one task sends output to the UART at once.
+
+## Build environment
+
+The project expects an external copy of the FreeRTOS kernel, in the location defined by `FREERTOS_KERNEL_PATH` in the top level *CMakeLists.txt*.
 
 The *.vscode* folder configures the IDE to program and control the target device via **PicoProbe**.
-
-## FreeRTOS kernel
-
-The project uses an external copy of the FreeRTOS kernel.
-
-> Set the location of the kernel using `FREERTOS_KERNEL_PATH` in the top level *CMakeLists.txt*.
-
-### To install the kernel if you don't already have it
-```sh
-$ cd [some_dir]
-$ git clone -b smp https://github.com/FreeRTOS/FreeRTOS-Kernel --recurse-submodules
-```
-
-### To update a previously downloaded kernel
-```sh
-$ cd [some_dir]/FreeRTOS-Kernel
-$ git pull
-```

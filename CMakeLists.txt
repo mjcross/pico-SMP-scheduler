@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 # Name project
-SET(ProjectName rp2040-freertos-template)
+SET(ProjectName pico-SMP-scheduler)
 
 # Set any variables required for importing libraries
 SET(FREERTOS_KERNEL_PATH /Users/martin/pico/freertos-pico/FreeRTOS-Kernel)
